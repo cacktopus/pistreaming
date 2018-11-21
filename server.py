@@ -48,9 +48,9 @@ class StreamingHttpHandler(BaseHTTPRequestHandler):
             self.send_header('Location', '/index.html')
             self.end_headers()
             return
-        elif self.path == '/jsmpg.js':
+        elif self.path == '/jsmpeg.min.js':
             content_type = 'application/javascript'
-            content = self.server.jsmpg_content
+            content = self.server.jsmpeg_content
         elif self.path == '/index.html':
             content_type = 'text/html; charset=utf-8'
             tpl = Template(self.server.index_template)
@@ -76,8 +76,8 @@ class StreamingHttpServer(HTTPServer):
                 ('', HTTP_PORT), StreamingHttpHandler)
         with io.open('index.html', 'r') as f:
             self.index_template = f.read()
-        with io.open('jsmpg.js', 'r') as f:
-            self.jsmpg_content = f.read()
+        with io.open('jsmpeg.min.js', 'r') as f:
+            self.jsmpeg_content = f.read()
 
 
 class StreamingWebSocket(WebSocket):
@@ -95,9 +95,9 @@ class BroadcastOutput(object):
             '-s', '%dx%d' % camera.resolution,
             '-r', str(float(camera.framerate)),
             '-i', '-',
-            '-f', 'mpeg1video',
+            '-f', 'mpegts',
             '-b', '800k',
-            '-r', str(float(camera.framerate)),
+            '-codec:v', 'mpeg1video',
             '-'],
             stdin=PIPE, stdout=PIPE, stderr=io.open(os.devnull, 'wb'),
             shell=False, close_fds=True)
@@ -143,7 +143,9 @@ def main():
             '', WS_PORT,
             server_class=WSGIServer,
             handler_class=WebSocketWSGIRequestHandler,
-            app=WebSocketWSGIApplication(handler_cls=StreamingWebSocket))
+            app=WebSocketWSGIApplication(
+                protocols=['null'],
+                handler_cls=StreamingWebSocket))
         websocket_server.initialize_websockets_manager()
         websocket_thread = Thread(target=websocket_server.serve_forever)
         print('Initializing HTTP server on port %d' % HTTP_PORT)
